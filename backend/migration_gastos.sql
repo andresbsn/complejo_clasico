@@ -1,0 +1,13 @@
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS gastos (
+    id SERIAL PRIMARY KEY,
+    descripcion TEXT NOT NULL,
+    monto DECIMAL(10, 2) NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    caja_id INTEGER REFERENCES cajas(id),
+    usuario_id INTEGER REFERENCES usuarios(id)
+);
+
+COMMIT;
