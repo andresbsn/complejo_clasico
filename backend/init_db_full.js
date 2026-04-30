@@ -29,6 +29,8 @@ function sanitizeDump(sql) {
         .replace(/^\\.*$/gm, '')
         .replace(/^\s*SET\s+.*;\s*$/gim, '')
         .replace(/^\s*SELECT\s+pg_catalog\.set_config\(.*\);\s*$/gim, '')
+        .replace(/^\s*ALTER\s+(SCHEMA|TABLE|SEQUENCE)\s+.*\s+OWNER\s+TO\s+.*;\s*$/gim, '')
+        .replace(/^\s*(GRANT|REVOKE)\s+.*;\s*$/gim, '')
         .replace(/CREATE SCHEMA\s+clasico_bd;/gi, `CREATE SCHEMA IF NOT EXISTS ${schemaName};`)
         .replace(/\bclasico_bd\b/g, schemaName)
         .trim();
