@@ -27,7 +27,8 @@ const sqlDumpPath = path.resolve(__dirname, '../estructura_complejo.sql');
 function sanitizeDump(sql) {
     return sql
         .replace(/^\\.*$/gm, '')
-        .replace(/^SET\s+transaction_timeout\s*=\s*.*;$/gim, '')
+        .replace(/^\s*SET\s+.*;\s*$/gim, '')
+        .replace(/^\s*SELECT\s+pg_catalog\.set_config\(.*\);\s*$/gim, '')
         .replace(/CREATE SCHEMA\s+clasico_bd;/gi, `CREATE SCHEMA IF NOT EXISTS ${schemaName};`)
         .replace(/\bclasico_bd\b/g, schemaName)
         .trim();
