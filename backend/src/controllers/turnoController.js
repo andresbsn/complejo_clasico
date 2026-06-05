@@ -78,11 +78,16 @@ const TurnoController = {
     async deleteFijo(req, res) {
         try {
             const { id } = req.params;
-            const deleted = await TurnoModel.deleteFijo(id);
+            const { fecha_desde } = req.query;
+            const deleted = await TurnoModel.deleteFijo(id, fecha_desde || null);
             if (!deleted) {
                 return res.status(404).json({ error: 'Turno fijo no encontrado' });
             }
-            res.json({ message: 'Turno fijo eliminado correctamente', turno: deleted });
+            res.json({
+                message: 'Turno fijo eliminado correctamente',
+                turno: deleted.turnoFijo,
+                turnos_eliminados: deleted.turnosEliminados
+            });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Error al eliminar turno fijo' });

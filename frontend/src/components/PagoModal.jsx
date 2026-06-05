@@ -132,7 +132,11 @@ const PagoModal = ({ turno, onClose, onPagoSuccess }) => {
         try {
             // Extract the real ID from the virtual ID (format: fijo_123)
             const fijoId = turno.id.toString().replace('fijo_', '');
-            await api.delete(`/turnos/fijos/${fijoId}`);
+            await api.delete(`/turnos/fijos/${fijoId}`, {
+                params: {
+                    fecha_desde: turno.fecha
+                }
+            });
             setShowCancelOptions(false);
             onPagoSuccess();
             alerts.toast('success', 'Turno fijo eliminado');

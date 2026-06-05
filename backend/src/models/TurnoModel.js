@@ -129,11 +129,67 @@ const TurnoModel = {
         return result.rows[0];
     },
 
-    // Eliminar turno fijo permanentemente
-    async deleteFijo(id) {
-        const query = 'DELETE FROM reservas_fijas WHERE id = $1 RETURNING *';
-        const result = await pool.query(query, [id]);
-        return result.rows[0];
+    // Eliminar turno fijo permanentemente y limpiar turnos futuros de la misma serie
+    async deleteFijo(id, fechaDesde = null) {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const deleteFijoQuery = `
+                DELETE FROM reservas_fijas
+                WHERE id = $1
+                RETURNING *
+            `;
+            const fixedResult = await client.query(deleteFijoQuery, [id]);
+            const turnoFijo = fixedResult.rows[0];
+
+            if (!turnoFijo) {
+                await client.query('ROLLBACK');
+                return null;
+            }
+
+            const fechaReferencia = fechaDesde || new Date().toISOString().slice(0, 10);
+
+            const deleteFutureTurnosQuery = `
+                DELETE FROM turnos t
+                WHERE t.cancha_id = $1
+                AND t.hora_inicio = $2
+                AND t.hora_fin = $3
+                AND t.cliente_nombre = $4
+                AND COALESCE(t.cliente_telefono, '') = COALESCE($5, '')
+                AND t.fecha >= $6::date
+                AND EXTRACT(DOW FROM t.fecha) = $7
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM pagos p
+                    WHERE p.turno_id = t.id
+                )
+                RETURNING t.id
+            `;
+
+            const deletedTurnosResult = await client.query(deleteFutureTurnosQuery, [
+                turnoFijo.cancha_id,
+                turnoFijo.hora_inicio,
+                turnoFijo.hora_fin,
+                turnoFijo.cliente_nombre,
+                turnoFijo.cliente_telefono,
+                fechaReferencia,
+                turnoFijo.dia_semana
+            ]);
+
+            await client.query('COMMIT');
+
+            return {
+                turnoFijo,
+                turnosEliminados: deletedTurnosResult.rowCount
+            };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 };
 
