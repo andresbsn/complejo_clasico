@@ -137,6 +137,10 @@ export const CuentaService = {
     addMovimiento: async (data) => {
         const response = await api.post('/cuentas', data);
         return response.data;
+    },
+    deleteMovimiento: async (id) => {
+        const response = await api.delete(`/cuentas/movimientos/${id}`);
+        return response.data;
     }
 };
 

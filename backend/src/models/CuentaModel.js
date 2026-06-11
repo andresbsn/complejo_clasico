@@ -34,6 +34,17 @@ const CuentaModel = {
         `;
         const result = await pool.query(query, [jugadorId]);
         return parseFloat(result.rows[0].saldo) || 0;
+    },
+
+    // Eliminar un movimiento por ID
+    async deleteMovimientoById(id) {
+        const query = `
+            DELETE FROM movimientos_cuenta
+            WHERE id = $1
+            RETURNING *
+        `;
+        const result = await pool.query(query, [id]);
+        return result.rows[0] || null;
     }
 };
 

@@ -192,5 +192,4 @@ const TurnoModel = {
         }
     }
 };
-
 module.exports = TurnoModel;

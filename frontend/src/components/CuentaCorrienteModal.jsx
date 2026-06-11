@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CuentaService, VentaService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/formatters';
 import { alerts } from '../utils/alerts';
 
@@ -18,6 +19,8 @@ const CuentaCorrienteModal = ({ jugador, onClose }) => {
     const [detailsCache, setDetailsCache] = useState({});
     const [loadingDetails, setLoadingDetails] = useState(false);
 
+    const { user } = useAuth();
+
     useEffect(() => {
         if (jugador) {
             fetchCuenta();
@@ -34,6 +37,27 @@ const CuentaCorrienteModal = ({ jugador, onClose }) => {
             console.error('Error fetching cuenta:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteMovimiento = async (mov) => {
+        try {
+            const confirmed = window.confirm('¿Eliminar este movimiento de la cuenta corriente?');
+            if (!confirmed) return;
+
+            const resp = await CuentaService.deleteMovimiento(mov.id);
+            // Actualizar lista y saldo desde la respuesta
+            setMovimientos(prev => prev.filter(m => m.id !== mov.id));
+            if (resp && typeof resp.nuevoSaldo !== 'undefined') {
+                setSaldo(resp.nuevoSaldo);
+            } else {
+                // fallback: recargar
+                fetchCuenta();
+            }
+            alerts.toast('success', 'Movimiento eliminado');
+        } catch (error) {
+            console.error('Error al eliminar movimiento', error);
+            alerts.error('Error', 'No se pudo eliminar el movimiento');
         }
     };
 
@@ -261,7 +285,16 @@ const CuentaCorrienteModal = ({ jugador, onClose }) => {
                                                         {mov.descripcion || 'Sin descripción'}
                                                     </span>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-right flex items-start gap-2">
+                                                    {user?.rol === 'admin' && (
+                                                        <button
+                                                            title="Eliminar movimiento"
+                                                            onClick={() => handleDeleteMovimiento(mov)}
+                                                            className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a1 1 0 00-1 1v1H4a1 1 0 100 2h.278l.76 12.141A2 2 0 007.033 22h9.934a2 2 0 001.995-1.859L19.722 7H20a1 1 0 100-2h-4V4a1 1 0 00-1-1H9zm2 4a1 1 0 112 0v10a1 1 0 11-2 0V7z"/></svg>
+                                                        </button>
+                                                    )}
                                                     <p className={`text-lg font-black leading-none ${
                                                         mov.tipo === 'DEBE' ? 'text-red-600' : 'text-green-600'
                                                     }`}>
