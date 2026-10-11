@@ -2,16 +2,32 @@ const pool = require('../config/db');
 
 const CanchaModel = {
     // Obtener todas las canchas
-    async getAll() {
-        const query = 'SELECT * FROM canchas ORDER BY id ASC';
-        const result = await pool.query(query);
+    async getAll(complejo = null) {
+        const values = [];
+        let query = 'SELECT * FROM canchas';
+
+        if (complejo) {
+            query += ' WHERE complejo = $1';
+            values.push(complejo);
+        }
+
+        query += ' ORDER BY id ASC';
+        const result = await pool.query(query, values);
         return result.rows;
     },
 
     // Obtener canchas por tipo
-    async getByType(tipo) {
-        const query = 'SELECT * FROM canchas WHERE tipo = $1 ORDER BY id ASC';
-        const result = await pool.query(query, [tipo]);
+    async getByType(tipo, complejo = null) {
+        const values = [tipo];
+        let query = 'SELECT * FROM canchas WHERE tipo = $1';
+
+        if (complejo) {
+            query += ' AND complejo = $2';
+            values.push(complejo);
+        }
+
+        query += ' ORDER BY id ASC';
+        const result = await pool.query(query, values);
         return result.rows;
     },
 
@@ -24,26 +40,26 @@ const CanchaModel = {
 
     // Crear una nueva cancha
     async create(data) {
-        const { nombre, tipo } = data;
+        const { nombre, tipo, complejo = 'Clasico 1' } = data;
         const query = `
-            INSERT INTO canchas (nombre, tipo)
-            VALUES ($1, $2)
+            INSERT INTO canchas (nombre, tipo, complejo)
+            VALUES ($1, $2, $3)
             RETURNING *
         `;
-        const result = await pool.query(query, [nombre, tipo]);
+        const result = await pool.query(query, [nombre, tipo, complejo]);
         return result.rows[0];
     },
 
     // Actualizar una cancha
     async update(id, data) {
-        const { nombre, tipo } = data;
+        const { nombre, tipo, complejo = null } = data;
         const query = `
             UPDATE canchas
-            SET nombre = $1, tipo = $2
-            WHERE id = $3
+            SET nombre = $1, tipo = $2, complejo = COALESCE($3, complejo)
+            WHERE id = $4
             RETURNING *
         `;
-        const result = await pool.query(query, [nombre, tipo, id]);
+        const result = await pool.query(query, [nombre, tipo, complejo, id]);
         return result.rows[0];
     },
 

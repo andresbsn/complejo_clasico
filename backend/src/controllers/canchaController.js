@@ -3,12 +3,12 @@ const CanchaModel = require('../models/CanchaModel');
 const canchaController = {
     getAll: async (req, res) => {
         try {
-            const { type } = req.query;
+            const { type, complejo } = req.query;
             let canchas;
             if (type) {
-                canchas = await CanchaModel.getByType(type);
+                canchas = await CanchaModel.getByType(type, complejo);
             } else {
-                canchas = await CanchaModel.getAll();
+                canchas = await CanchaModel.getAll(complejo);
             }
             res.json(canchas);
         } catch (error) {
@@ -33,11 +33,11 @@ const canchaController = {
 
     create: async (req, res) => {
         try {
-            const { nombre, tipo } = req.body;
+            const { nombre, tipo, complejo = 'Clasico 1' } = req.body;
             if (!nombre || !tipo) {
                 return res.status(400).json({ error: 'Nombre y tipo son requeridos' });
             }
-            const newCancha = await CanchaModel.create({ nombre, tipo });
+            const newCancha = await CanchaModel.create({ nombre, tipo, complejo });
             res.status(201).json(newCancha);
         } catch (error) {
             console.error(error);
@@ -48,8 +48,8 @@ const canchaController = {
     update: async (req, res) => {
         try {
             const { id } = req.params;
-            const { nombre, tipo } = req.body;
-            const updatedCancha = await CanchaModel.update(id, { nombre, tipo });
+            const { nombre, tipo, complejo } = req.body;
+            const updatedCancha = await CanchaModel.update(id, { nombre, tipo, complejo });
             if (!updatedCancha) {
                 return res.status(404).json({ error: 'Cancha no encontrada' });
             }

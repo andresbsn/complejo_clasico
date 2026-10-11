@@ -5,6 +5,62 @@ import autoTable from 'jspdf-autotable';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/formatters';
 import { alerts } from '../utils/alerts';
+import { COMPLEJOS } from '../utils/complejos';
+
+const PadelStatistics = ({ stats, loading }) => {
+    const summary = stats.summary || {};
+    const number = (value) => Number(value || 0).toLocaleString('es-AR');
+    const money = (value) => `$${formatCurrency(value || 0)}`;
+    const period = (value) => value ? String(value).slice(0, 10) : '-';
+
+    if (loading) return <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500">Cargando estadísticas de pádel...</div>;
+
+    return (
+        <section className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                {[
+                    ['Turnos realizados', number(summary.total_turnos), 'text-indigo-700'],
+                    ['Facturación', money(summary.facturacion), 'text-green-700'],
+                    ['Duración promedio', `${Number(summary.duracion_promedio || 0).toFixed(1)} h`, 'text-gray-900'],
+                    ['Cancelados', number(summary.cancelados), 'text-red-600'],
+                    ['Canchas activas', number(summary.canchas_activas), 'text-gray-900']
+                ].map(([label, value, color]) => (
+                    <div key={label} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className={`text-xl font-bold mt-1 ${color}`}>{value}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <MetricTable title="Turnos diarios" headers={['Fecha', 'Cantidad']} rows={stats.daily.map(item => [period(item.fecha), number(item.cantidad)])} empty="No hay turnos en el período." />
+                <MetricTable title="Turnos semanales" headers={['Semana inicia', 'Cantidad']} rows={stats.weekly.map(item => [period(item.periodo), number(item.cantidad)])} empty="No hay datos semanales." />
+                <MetricTable title="Turnos mensuales" headers={['Mes', 'Cantidad']} rows={stats.monthly.map(item => [period(item.periodo).slice(0, 7), number(item.cantidad)])} empty="No hay datos mensuales." />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <MetricTable title="Días de mayor demanda" headers={['Día', 'Turnos']} rows={stats.weekdays.map(item => [item.dia, number(item.cantidad)])} empty="Sin datos." />
+                <MetricTable title="Franjas horarias" headers={['Desde', 'Turnos']} rows={stats.hours.slice(0, 8).map(item => [item.franja, number(item.cantidad)])} empty="Sin datos." />
+                <MetricTable title="Canchas más alquiladas" headers={['Cancha', 'Turnos']} rows={stats.courts.map(item => [item.cancha_nombre, number(item.cantidad)])} empty="Sin datos." />
+            </div>
+            <p className="text-xs text-gray-500">La franja y el día con mayor cantidad de turnos muestran los picos de demanda. Las franjas con menos turnos ayudan a detectar oportunidades de promoción.</p>
+        </section>
+    );
+};
+
+const MetricTable = ({ title, headers, rows, empty }) => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100"><h3 className="font-semibold text-gray-800">{title}</h3></div>
+        <div className="max-h-64 overflow-y-auto">
+            <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-500 uppercase"><tr>{headers.map(header => <th key={header} className="px-4 py-2 text-left">{header}</th>)}</tr></thead>
+                <tbody className="divide-y divide-gray-100">
+                    {rows.length === 0 ? <tr><td colSpan={headers.length} className="px-4 py-5 text-center text-gray-400">{empty}</td></tr> : rows.map((row, index) => <tr key={`${row[0]}-${index}`}><td className="px-4 py-2 text-gray-700">{row[0]}</td><td className="px-4 py-2 text-right font-semibold text-gray-900">{row[1]}</td></tr>)}
+                </tbody>
+            </table>
+        </div>
+    </div>
+);
 
 const ReportesPage = () => {
     const { user } = useAuth();
@@ -35,6 +91,12 @@ const ReportesPage = () => {
 
     // Stats
     const [stats, setStats] = useState({ total: 0, byMethod: {} });
+    const [padelStats, setPadelStats] = useState({
+        summary: {}, daily: [], weekly: [], monthly: [], weekdays: [], hours: [], courts: []
+    });
+    const [padelComplejo, setPadelComplejo] = useState('');
+    const [padelFechaDesde, setPadelFechaDesde] = useState('');
+    const [padelFechaHasta, setPadelFechaHasta] = useState(getToday());
 
     // Caja Tab State
     const [cajasHistory, setCajasHistory] = useState([]);
@@ -55,7 +117,7 @@ const ReportesPage = () => {
 
     useEffect(() => {
         // Prevent non-admins from fetching unauthorized reports
-        if (!isAdmin && (activeTab === 'ventas' || activeTab === 'jugadores')) {
+        if (!isAdmin && (activeTab === 'ventas' || activeTab === 'jugadores' || activeTab === 'padel')) {
             setActiveTab('deudores');
             return;
         }
@@ -114,6 +176,14 @@ const ReportesPage = () => {
                     const history = await CajaService.getHistorial();
                     setCajasHistory(history);
                 }
+            } else if (activeTab === 'padel' && isAdmin) {
+                const filters = filtersOverride || {
+                    complejo: padelComplejo,
+                    fechaDesde: padelFechaDesde,
+                    fechaHasta: padelFechaHasta
+                };
+                const data = await ReporteService.getPadelStats(filters);
+                setPadelStats(data);
             }
         } catch (error) {
             console.error('Error fetching report:', error);
@@ -196,6 +266,11 @@ const ReportesPage = () => {
             setJugadorSearch('');
             setJugadorCategoria('');
             fetchReport({ search: '', categoria_id: '' });
+        } else if (activeTab === 'padel') {
+            setPadelComplejo('');
+            setPadelFechaDesde('');
+            setPadelFechaHasta(getToday());
+            fetchReport({ complejo: '', fechaDesde: '', fechaHasta: getToday() });
         }
     };
 
@@ -350,7 +425,7 @@ const ReportesPage = () => {
     };
 
     // Updated tabs list
-    const tabs = isAdmin ? ['ventas', 'jugadores', 'deudores', 'caja'] : ['deudores', 'caja'];
+    const tabs = isAdmin ? ['ventas', 'padel', 'jugadores', 'deudores', 'caja'] : ['deudores', 'caja'];
 
     return (
         <div className="space-y-6">
@@ -369,21 +444,22 @@ const ReportesPage = () => {
                         >
                             {tab === 'ventas' ? 'Ingresos' : 
                              tab === 'jugadores' ? 'Jugadores' : 
+                             tab === 'padel' ? 'Pádel' :
                              tab === 'caja' ? 'Caja' : 'Deudores'}
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div className="flex justify-end">
-                <button
+             {activeTab !== 'padel' && <div className="flex justify-end">
+                 <button
                     onClick={exportPDF}
                     disabled={reportData.length === 0}
                     className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     <span>📄</span> Exportar PDF
-                </button>
-            </div>
+                 </button>
+             </div>}
 
             {/* Filters for Ventas */}
             {activeTab === 'ventas' && (
@@ -504,6 +580,33 @@ const ReportesPage = () => {
                     </form>
                 </div>
             )}
+
+            {activeTab === 'padel' && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Complejo</label>
+                            <select value={padelComplejo} onChange={(e) => setPadelComplejo(e.target.value)} className="w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                <option value="">Todos los complejos</option>
+                                {COMPLEJOS.map(complejo => <option key={complejo} value={complejo}>{complejo}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Desde</label>
+                            <input type="date" value={padelFechaDesde} onChange={(e) => setPadelFechaDesde(e.target.value)} className="w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Hasta</label>
+                            <input type="date" value={padelFechaHasta} onChange={(e) => setPadelFechaHasta(e.target.value)} className="w-full border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        </div>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={handleLimpiarFiltros} className="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 text-sm font-medium">Limpiar</button>
+                            <button type="submit" className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 text-sm font-medium">Filtrar</button>
+                        </div>
+                    </form>
+                    <p className="text-xs text-gray-500 mt-3">Se cuentan turnos de pádel no cancelados. Sin fecha inicial se toma todo el historial.</p>
+                </div>
+            )}
             {/* Filters for Caja */}
             {activeTab === 'caja' && (
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center justify-between">
@@ -534,7 +637,7 @@ const ReportesPage = () => {
             )}
             
             {/* Stats Cards */}
-            {(activeTab !== 'caja' || selectedCaja) && (
+            {activeTab !== 'padel' && (activeTab !== 'caja' || selectedCaja) && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-sm text-gray-500">
@@ -565,6 +668,10 @@ const ReportesPage = () => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {activeTab === 'padel' && (
+                <PadelStatistics stats={padelStats} loading={loading} />
             )}
 
             {/* Mobile Cards View */}

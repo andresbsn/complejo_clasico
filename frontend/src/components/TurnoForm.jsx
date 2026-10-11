@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TurnoService, CanchaService, ConfiguracionService } from '../services/api';
 import { alerts } from '../utils/alerts';
+import { COMPLEJOS } from '../utils/complejos';
 
 const TurnoForm = ({ onTurnoCreated }) => {
   const [formData, setFormData] = useState({
@@ -14,12 +15,13 @@ const TurnoForm = ({ onTurnoCreated }) => {
   });
   const [canchas, setCanchas] = useState([]);
   const [config, setConfig] = useState({});
+  const [selectedComplejo, setSelectedComplejo] = useState('Clasico 1');
 
   useEffect(() => {
     const fetchData = async () => {
         try {
             const [canchasData, configData] = await Promise.all([
-                CanchaService.getAll(),
+                CanchaService.getAll({ complejo: selectedComplejo }),
                 ConfiguracionService.getAll()
             ]);
             setCanchas(canchasData);
@@ -29,7 +31,7 @@ const TurnoForm = ({ onTurnoCreated }) => {
         }
     };
     fetchData();
-  }, []);
+  }, [selectedComplejo]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -76,7 +78,20 @@ const TurnoForm = ({ onTurnoCreated }) => {
     <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded bg-gray-50">
       <h3 className="text-xl font-bold">Nuevo Turno</h3>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium">Complejo</label>
+          <select
+            value={selectedComplejo}
+            onChange={(e) => {
+              setSelectedComplejo(e.target.value);
+              setFormData(current => ({ ...current, cancha_id: '', monto_total: '' }));
+            }}
+            className="w-full p-2 border rounded"
+          >
+            {COMPLEJOS.map(complejo => <option key={complejo} value={complejo}>{complejo}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium">Cancha</label>
           <select name="cancha_id" onChange={handleChange} className="w-full p-2 border rounded" required>

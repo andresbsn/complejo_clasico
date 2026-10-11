@@ -48,7 +48,7 @@ const CanchaList = () => {
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900">{cancha.nombre}</h3>
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
-                                        {cancha.tipo}
+                                        {cancha.tipo} · {cancha.complejo}
                                     </span>
                                 </div>
                                 <div className="bg-gray-100 p-2 rounded-lg">

@@ -1,24 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { TurnoService } from '../services/api';
+import { TurnoService, CanchaService } from '../services/api';
 import PagoModal from './PagoModal';
 import { formatCurrency } from '../utils/formatters';
 import { alerts } from '../utils/alerts';
+import { COMPLEJOS } from '../utils/complejos';
 
 const TurnoList = () => {
   const [turnos, setTurnos] = useState([]);
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [selectedTurno, setSelectedTurno] = useState(null);
+  const [selectedComplejo, setSelectedComplejo] = useState('Clasico 1');
+  const [canchas, setCanchas] = useState([]);
 
   useEffect(() => {
-    fetchTurnos();
-  }, [fecha]);
+    const fetchData = async () => {
+      try {
+        const [turnosData, canchasData] = await Promise.all([
+          TurnoService.getAll(fecha),
+          CanchaService.getAll({ complejo: selectedComplejo })
+        ]);
+        setTurnos(turnosData);
+        setCanchas(canchasData);
+      } catch (error) {
+        console.error('Error al cargar turnos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    setLoading(true);
+    fetchData();
+  }, [fecha, selectedComplejo]);
 
   const fetchTurnos = async () => {
     setLoading(true);
     try {
-      const data = await TurnoService.getAll(fecha);
-      setTurnos(data);
+      const [turnosData, canchasData] = await Promise.all([
+        TurnoService.getAll(fecha),
+        CanchaService.getAll({ complejo: selectedComplejo })
+      ]);
+      setTurnos(turnosData);
+      setCanchas(canchasData);
     } catch (error) {
       console.error('Error al cargar turnos:', error);
     } finally {
@@ -27,14 +50,14 @@ const TurnoList = () => {
   };
 
   // Agrupar turnos por cancha
-  const turnosPorCancha = {
-    'Cancha Padel 1': [],
-    'Cancha Padel 2': [],
-    'Cancha Futbol 5': []
-  };
+  const canchaIds = new Set(canchas.map(cancha => cancha.id));
+  const turnosPorCancha = canchas.reduce((grupos, cancha) => {
+    grupos[cancha.nombre] = [];
+    return grupos;
+  }, {});
 
   turnos.forEach(turno => {
-    if (turnosPorCancha[turno.cancha_nombre]) {
+    if (canchaIds.has(turno.cancha_id) && turnosPorCancha[turno.cancha_nombre]) {
       turnosPorCancha[turno.cancha_nombre].push(turno);
     }
   });
@@ -43,12 +66,26 @@ const TurnoList = () => {
     <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Agenda de Turnos</h2>
-        <input 
-          type="date" 
-          value={fecha} 
-          onChange={(e) => setFecha(e.target.value)}
-          className="w-full md:w-auto border border-gray-300 rounded-lg px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-        />
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <nav className="flex border-b border-gray-200" aria-label="Seleccionar complejo">
+            {COMPLEJOS.map(complejo => (
+              <button
+                key={complejo}
+                type="button"
+                onClick={() => setSelectedComplejo(complejo)}
+                className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${selectedComplejo === complejo ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+              >
+                {complejo}
+              </button>
+            ))}
+          </nav>
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="w-full md:w-auto border border-gray-300 rounded-lg px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
       </div>
 
       {loading ? (

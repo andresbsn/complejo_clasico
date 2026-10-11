@@ -6,6 +6,7 @@ import ReservaModal from './ReservaModal';
 import CanchaForm from './CanchaForm';
 import { useAuth } from '../context/AuthContext';
 import { alerts } from '../utils/alerts';
+import { COMPLEJOS } from '../utils/complejos';
 
 const ReservaPage = ({ type }) => {
     // type: 'PADEL' or 'FUTBOL' (or whatever matches database 'tipo' and config keys)
@@ -18,6 +19,7 @@ const ReservaPage = ({ type }) => {
     const [reservas, setReservas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedComplejo, setSelectedComplejo] = useState('Clasico 1');
     const [modalOpen, setModalOpen] = useState(false);
     const [pagoModalOpen, setPagoModalOpen] = useState(false);
     const [canchaModalOpen, setCanchaModalOpen] = useState(false);
@@ -27,14 +29,14 @@ const ReservaPage = ({ type }) => {
     // Initial Data Fetch
     useEffect(() => {
         fetchData();
-    }, [type]);
+    }, [type, selectedComplejo]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const [configData, canchasData] = await Promise.all([
                 ConfiguracionService.getAll(),
-                CanchaService.getAll({ type }) // Filter by type
+                CanchaService.getAll({ type, complejo: selectedComplejo })
             ]);
             setConfig(configData);
             setCanchas(canchasData);
@@ -181,8 +183,20 @@ const ReservaPage = ({ type }) => {
                             </button>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Fecha:</label>
+                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                         <nav className="flex flex-1 border-b border-gray-200" aria-label="Seleccionar complejo">
+                             {COMPLEJOS.map(complejo => (
+                                 <button
+                                     key={complejo}
+                                     type="button"
+                                     onClick={() => setSelectedComplejo(complejo)}
+                                     className={`flex-1 border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${selectedComplejo === complejo ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                 >
+                                     {complejo}
+                                 </button>
+                             ))}
+                         </nav>
+                         <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Fecha:</label>
                         <input 
                             type="date" 
                             value={selectedDate} 
@@ -243,6 +257,7 @@ const ReservaPage = ({ type }) => {
                         <CanchaForm 
                             onCanchaAdded={handleCanchaAdded} 
                             defaultType={type}
+                            defaultComplejo={selectedComplejo}
                             onClose={() => setCanchaModalOpen(false)}
                         />
                     </div>

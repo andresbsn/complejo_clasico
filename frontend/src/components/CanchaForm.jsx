@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CanchaService } from '../services/api';
 import { alerts } from '../utils/alerts';
+import { COMPLEJOS } from '../utils/complejos';
 
-const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', onClose }) => {
+const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', defaultComplejo = 'Clasico 1', onClose }) => {
     const [nombre, setNombre] = useState('');
     const [tipo, setTipo] = useState(defaultType.toLowerCase());
+    const [complejo, setComplejo] = useState(defaultComplejo);
     const [loading, setLoading] = useState(false);
 
     // Update tipo if defaultType changes
@@ -14,6 +16,10 @@ const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', onClose }) => {
         }
     }, [defaultType]);
 
+    useEffect(() => {
+        setComplejo(defaultComplejo);
+    }, [defaultComplejo]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -21,7 +27,8 @@ const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', onClose }) => {
         try {
             await CanchaService.create({ 
                 nombre, 
-                tipo: tipo.toUpperCase()
+                tipo: tipo.toUpperCase(),
+                complejo
             });
 
             setNombre('');
@@ -52,6 +59,19 @@ const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', onClose }) => {
                         required
                         autoComplete="off"
                     />
+                </div>
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="complejo">
+                        Complejo
+                    </label>
+                    <select
+                        id="complejo"
+                        value={complejo}
+                        onChange={(e) => setComplejo(e.target.value)}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5"
+                    >
+                        {COMPLEJOS.map(opcion => <option key={opcion} value={opcion}>{opcion}</option>)}
+                    </select>
                 </div>
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="tipo">

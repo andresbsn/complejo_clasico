@@ -158,6 +158,91 @@ const reporteController = {
             console.error('Error getting debtors report:', error);
             res.status(500).json({ error: 'Error al generar reporte de deudores' });
         }
+    },
+
+    getPadelStats: async (req, res) => {
+        try {
+            const { complejo, fechaDesde, fechaHasta } = req.query;
+            const conditions = ["c.tipo = 'PADEL'"];
+            const params = [];
+
+            if (complejo) {
+                params.push(complejo);
+                conditions.push(`c.complejo = $${params.length}`);
+            }
+            if (fechaDesde) {
+                params.push(fechaDesde);
+                conditions.push(`t.fecha >= $${params.length}::date`);
+            }
+            if (fechaHasta) {
+                params.push(fechaHasta);
+                conditions.push(`t.fecha <= $${params.length}::date`);
+            }
+
+            const filtered = `
+                WITH reservas AS (
+                    SELECT t.id, t.fecha, t.hora_inicio, t.hora_fin, t.estado,
+                           t.monto_total, c.nombre AS cancha_nombre, c.complejo
+                    FROM turnos t
+                    JOIN canchas c ON c.id = t.cancha_id
+                    WHERE ${conditions.join(' AND ')}
+                )
+            `;
+            const queryParams = [...params];
+            const [summary, daily, weekly, monthly, weekdays, hours, courts] = await Promise.all([
+                pool.query(`${filtered}
+                    SELECT COUNT(*) FILTER (WHERE estado <> 'cancelado')::int AS total_turnos,
+                           COUNT(*) FILTER (WHERE estado = 'cancelado')::int AS cancelados,
+                           COALESCE(SUM(monto_total) FILTER (WHERE estado <> 'cancelado'), 0) AS facturacion,
+                           COALESCE(AVG(EXTRACT(EPOCH FROM (hora_fin - hora_inicio)) / 3600)
+                               FILTER (WHERE estado <> 'cancelado'), 0) AS duracion_promedio,
+                           COUNT(DISTINCT cancha_nombre) FILTER (WHERE estado <> 'cancelado')::int AS canchas_activas
+                    FROM reservas`, queryParams),
+                pool.query(`${filtered}
+                    SELECT fecha, COUNT(*)::int AS cantidad,
+                           COALESCE(SUM(monto_total) FILTER (WHERE estado <> 'cancelado'), 0) AS facturacion
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY fecha ORDER BY fecha`, queryParams),
+                pool.query(`${filtered}
+                    SELECT DATE_TRUNC('week', fecha)::date AS periodo, COUNT(*)::int AS cantidad
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY periodo ORDER BY periodo`, queryParams),
+                pool.query(`${filtered}
+                    SELECT DATE_TRUNC('month', fecha)::date AS periodo, COUNT(*)::int AS cantidad
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY periodo ORDER BY periodo`, queryParams),
+                pool.query(`${filtered}
+                    SELECT EXTRACT(ISODOW FROM fecha)::int AS dia_numero,
+                           CASE EXTRACT(ISODOW FROM fecha)::int
+                             WHEN 1 THEN 'Lunes' WHEN 2 THEN 'Martes' WHEN 3 THEN 'Miércoles'
+                             WHEN 4 THEN 'Jueves' WHEN 5 THEN 'Viernes' WHEN 6 THEN 'Sábado' ELSE 'Domingo'
+                           END AS dia, COUNT(*)::int AS cantidad
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY dia_numero, dia ORDER BY dia_numero`, queryParams),
+                pool.query(`${filtered}
+                    SELECT TO_CHAR(hora_inicio, 'HH24:00') AS franja, COUNT(*)::int AS cantidad
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY franja ORDER BY cantidad DESC, franja`, queryParams),
+                pool.query(`${filtered}
+                    SELECT cancha_nombre, complejo, COUNT(*)::int AS cantidad,
+                           COALESCE(SUM(monto_total), 0) AS facturacion
+                    FROM reservas WHERE estado <> 'cancelado'
+                    GROUP BY cancha_nombre, complejo ORDER BY cantidad DESC, cancha_nombre`, queryParams)
+            ]);
+
+            res.json({
+                summary: summary.rows[0],
+                daily: daily.rows,
+                weekly: weekly.rows,
+                monthly: monthly.rows,
+                weekdays: weekdays.rows,
+                hours: hours.rows,
+                courts: courts.rows
+            });
+        } catch (error) {
+            console.error('Error getting padel statistics:', error);
+            res.status(500).json({ error: 'Error al generar estadísticas de pádel' });
+        }
     }
 };
 
