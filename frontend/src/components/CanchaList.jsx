@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { CanchaService } from '../services/api';
 import { alerts } from '../utils/alerts';
+import CanchaForm from './CanchaForm';
 
 const CanchaList = () => {
     const [canchas, setCanchas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [editingCancha, setEditingCancha] = useState(null);
 
     useEffect(() => {
         fetchCanchas();
@@ -56,6 +58,12 @@ const CanchaList = () => {
                                 </div>
                             </div>
                             <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={() => setEditingCancha(cancha)}
+                                    className="text-sm text-indigo-600 hover:text-indigo-900 font-medium transition-colors mr-4"
+                                >
+                                    Editar
+                                </button>
                                 <button 
                                     onClick={() => handleDelete(cancha.id)}
                                     className="text-sm text-red-600 hover:text-red-900 font-medium transition-colors"
@@ -67,6 +75,29 @@ const CanchaList = () => {
                     </div>
                 ))}
             </div>
+
+            {editingCancha && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-4">
+                    <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                        <button
+                            type="button"
+                            onClick={() => setEditingCancha(null)}
+                            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                            aria-label="Cerrar edición"
+                        >
+                            ×
+                        </button>
+                        <CanchaForm
+                            initialCancha={editingCancha}
+                            onCanchaAdded={() => {
+                                setEditingCancha(null);
+                                fetchCanchas();
+                            }}
+                            onClose={() => setEditingCancha(null)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

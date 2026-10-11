@@ -3,36 +3,48 @@ import { CanchaService } from '../services/api';
 import { alerts } from '../utils/alerts';
 import { COMPLEJOS } from '../utils/complejos';
 
-const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', defaultComplejo = 'Clasico 1', onClose }) => {
-    const [nombre, setNombre] = useState('');
-    const [tipo, setTipo] = useState(defaultType.toLowerCase());
-    const [complejo, setComplejo] = useState(defaultComplejo);
+const CanchaForm = ({ onCanchaAdded, initialCancha = null, defaultType = 'PADEL', defaultComplejo = 'Clasico 1', onClose }) => {
+    const [nombre, setNombre] = useState(initialCancha?.nombre || '');
+    const [tipo, setTipo] = useState((initialCancha?.tipo || defaultType).toLowerCase());
+    const [complejo, setComplejo] = useState(initialCancha?.complejo || defaultComplejo);
     const [loading, setLoading] = useState(false);
 
     // Update tipo if defaultType changes
     useEffect(() => {
-        if (defaultType) {
+        if (defaultType && !initialCancha) {
             setTipo(defaultType.toLowerCase());
         }
-    }, [defaultType]);
+    }, [defaultType, initialCancha]);
 
     useEffect(() => {
-        setComplejo(defaultComplejo);
-    }, [defaultComplejo]);
+        if (initialCancha) {
+            setNombre(initialCancha.nombre || '');
+            setTipo((initialCancha.tipo || defaultType).toLowerCase());
+            setComplejo(initialCancha.complejo || defaultComplejo);
+        } else {
+            setComplejo(defaultComplejo);
+        }
+    }, [initialCancha, defaultType, defaultComplejo]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            await CanchaService.create({ 
+            const data = {
                 nombre, 
                 tipo: tipo.toUpperCase(),
                 complejo
-            });
+            };
+
+            if (initialCancha) {
+                await CanchaService.update(initialCancha.id, data);
+            } else {
+                await CanchaService.create(data);
+            }
 
             setNombre('');
-            alerts.toast('success', `Cancha "${nombre}" creada exitosamente`);
+            alerts.toast('success', `Cancha "${nombre}" ${initialCancha ? 'actualizada' : 'creada'} exitosamente`);
             if (onCanchaAdded) onCanchaAdded();
         } catch (err) {
             alerts.error('Error', err.response?.data?.error || 'No se pudo crear la cancha');
@@ -43,7 +55,7 @@ const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', defaultComplejo = 'C
 
     return (
         <div className="p-1">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Agregar Nueva Cancha</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">{initialCancha ? 'Editar Cancha' : 'Agregar Nueva Cancha'}</h3>
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="nombre">
@@ -102,7 +114,7 @@ const CanchaForm = ({ onCanchaAdded, defaultType = 'PADEL', defaultComplejo = 'C
                         disabled={loading}
                         className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {loading ? 'Guardando...' : 'Guardar Cancha'}
+                        {loading ? 'Guardando...' : initialCancha ? 'Actualizar Cancha' : 'Guardar Cancha'}
                     </button>
                 </div>
             </form>

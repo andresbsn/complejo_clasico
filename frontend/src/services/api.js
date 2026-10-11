@@ -95,6 +95,10 @@ export const CanchaService = {
         const response = await api.post('/canchas', data);
         return response.data;
     },
+    update: async (id, data) => {
+        const response = await api.put(`/canchas/${id}`, data);
+        return response.data;
+    },
     delete: async (id) => {
         const response = await api.delete(`/canchas/${id}`);
         return response.data;
