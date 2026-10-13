@@ -1,6 +1,20 @@
 const CajaModel = require('../models/CajaModel');
+const ReporteModel = require('../models/ReporteModel');
+const { validarIdCaja } = require('../models/ReporteUtils');
 
 const CajaController = {
+    getArqueo: async (req, res) => {
+        try {
+            let id;
+            try { id = validarIdCaja(req.params.id); } catch (validationError) { return res.status(400).json({ error: validationError.message }); }
+            const arqueo = await ReporteModel.getArqueo(id);
+            if (!arqueo) return res.status(404).json({ error: 'Caja no encontrada' });
+            res.json(arqueo);
+        } catch (error) {
+            console.error('Error getting cash reconciliation:', error);
+            res.status(500).json({ error: 'Error al generar arqueo' });
+        }
+    },
     abrir: async (req, res) => {
         try {
             const { saldo_inicial, usuario_id } = req.body;

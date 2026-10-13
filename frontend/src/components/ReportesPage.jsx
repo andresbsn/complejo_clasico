@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/formatters';
 import { alerts } from '../utils/alerts';
 import { COMPLEJOS } from '../utils/complejos';
+import FinancialReports from './FinancialReports';
 
 const PadelStatistics = ({ stats, loading }) => {
     const summary = stats.summary || {};
@@ -429,6 +430,8 @@ const ReportesPage = () => {
 
     return (
         <div className="space-y-6">
+            {isAdmin && <FinancialReports />}
+            <div className="border-t pt-5"><h2 className="text-lg font-semibold text-gray-700 mb-3">Reportes anteriores</h2>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 className="text-2xl font-bold text-gray-800">Reportes del Sistema</h2>
                 <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
@@ -1103,6 +1106,7 @@ const ReportesPage = () => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 };

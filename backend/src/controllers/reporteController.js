@@ -1,6 +1,17 @@
 const pool = require('../config/db');
+const ReporteModel = require('../models/ReporteModel');
 
 const reporteController = {
+    getFinanzas: async (req, res) => {
+        try {
+            const data = await ReporteModel.getFinanzas(req.query);
+            res.json(data);
+        } catch (error) {
+            if (/inválida|fechas|posterior/.test(error.message)) return res.status(400).json({ error: error.message });
+            console.error('Error getting financial report:', error);
+            res.status(500).json({ error: 'Error al generar reporte financiero' });
+        }
+    },
     getVentasReport: async (req, res) => {
         try {
             const { fechaDesde, fechaHasta, tipo, metodoPago, categoriaVenta } = req.query;

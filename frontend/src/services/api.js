@@ -2,8 +2,8 @@ import axios from 'axios';
 import { alerts } from '../utils/alerts';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-    // baseURL: import.meta.env.VITE_API_URL || '/api',
+    // baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+    baseURL: import.meta.env.VITE_API_URL || '/api',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -176,6 +176,14 @@ export const ProveedorService = {
 };
 
 export const ReporteService = {
+    async getFinanzas(filters = {}) {
+        const params = new URLSearchParams();
+        ['vista', 'fechaDesde', 'fechaHasta', 'metodo', 'origen'].forEach((key) => {
+            if (filters[key]) params.append(key, filters[key]);
+        });
+        const response = await api.get(`/reportes/finanzas?${params.toString()}`);
+        return response.data;
+    },
     async getVentas(filters) {
         // filters: { fechaDesde, fechaHasta, tipo, metodoPago }
         const params = new URLSearchParams();
@@ -280,6 +288,10 @@ export const CajaService = {
     },
     getById: async (id) => {
         const response = await api.get(`/cajas/${id}`);
+        return response.data;
+    },
+    getArqueo: async (id) => {
+        const response = await api.get(`/cajas/${id}/arqueo`);
         return response.data;
     },
     getVentaDetalles: async (id) => {
