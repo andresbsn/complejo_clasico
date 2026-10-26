@@ -134,12 +134,12 @@ const VentaModel = {
         const conditions = [];
 
         if (fechaDesde) {
-            conditions.push(`(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date >= $${values.length + 1}`);
+            conditions.push(`fecha::date >= $${values.length + 1}::date`);
             values.push(fechaDesde);
         }
 
         if (fechaHasta) {
-            conditions.push(`(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date <= $${values.length + 1}`);
+            conditions.push(`fecha::date <= $${values.length + 1}::date`);
             values.push(fechaHasta);
         }
 
@@ -154,14 +154,16 @@ const VentaModel = {
     },
 
     // Obtener detalles de una venta
-    async getDetalles(ventaId) {
+    async getDetalles(ventaId, fechaLimite = null) {
         const query = `
             SELECT dv.*, p.nombre as producto_nombre
             FROM detalle_venta_cantina dv
             JOIN productos p ON dv.producto_id = p.id
+            JOIN ventas_cantina v ON v.id = dv.venta_id
             WHERE dv.venta_id = $1
+            ${fechaLimite ? "AND v.fecha::date = $2::date" : ''}
         `;
-        const result = await pool.query(query, [ventaId]);
+        const result = await pool.query(query, fechaLimite ? [ventaId, fechaLimite] : [ventaId]);
         return result.rows;
     },
 

@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const ventaController = require('../controllers/ventaController');
 const { checkCajaAbierta } = require('../middleware/cajaMiddleware');
+const { ensureAdmin } = require('../middleware/roleMiddleware');
 
 router.post('/', checkCajaAbierta, ventaController.createVenta);
 router.get('/', ventaController.getVentas);
 router.get('/:id/detalles', ventaController.getDetallesVenta);
-router.post('/:id/nota-credito', ventaController.generarNotaCredito);
+router.post('/:id/nota-credito', ensureAdmin, ventaController.generarNotaCredito);
 
 module.exports = router;

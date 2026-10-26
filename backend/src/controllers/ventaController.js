@@ -1,5 +1,12 @@
 const VentaModel = require('../models/VentaModel');
 
+const getTodayInArgentina = () => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+}).format(new Date());
+
 const ventaController = {
     createVenta: async (req, res) => {
         try {
@@ -16,9 +23,15 @@ const ventaController = {
 
     getVentas: async (req, res) => {
         try {
-            const { fechaDesde, fechaHasta } = req.query;
+            let { fechaDesde, fechaHasta } = req.query;
+
+            // Los usuarios operativos solo pueden consultar los movimientos del día.
+            if (req.user.rol !== 'admin') {
+                fechaDesde = getTodayInArgentina();
+                fechaHasta = fechaDesde;
+            }
+
             const ventas = await VentaModel.getAll(fechaDesde, fechaHasta);
-            // Opcional: Podríamos querer incluir los detalles en la lista, pero por ahora simple
             res.json(ventas);
         } catch (error) {
             console.error('Error al obtener ventas:', error);
@@ -29,7 +42,13 @@ const ventaController = {
     getDetallesVenta: async (req, res) => {
         try {
             const { id } = req.params;
-            const detalles = await VentaModel.getDetalles(id);
+            const fechaLimite = req.user.rol === 'admin' ? null : getTodayInArgentina();
+            const detalles = await VentaModel.getDetalles(id, fechaLimite);
+
+            if (detalles.length === 0) {
+                return res.status(404).json({ error: 'Venta no encontrada o fuera del período permitido.' });
+            }
+
             res.json(detalles);
         } catch (error) {
             console.error('Error al obtener detalles de venta:', error);

@@ -42,10 +42,13 @@ const JugadorModel = {
 
     async search(termino) {
         const query = `
-            SELECT j.*, c.descripcion as categoria_descripcion 
+            SELECT j.*, c.descripcion as categoria_descripcion,
+            COALESCE(SUM(CASE WHEN m.tipo = 'DEBE' THEN m.monto ELSE -m.monto END), 0) as saldo
             FROM jugadores j
             LEFT JOIN categorias c ON j.categoria_id = c.id
+            LEFT JOIN movimientos_cuenta m ON j.id = m.jugador_id
             WHERE j.nombre ILIKE $1 
+            GROUP BY j.id, c.descripcion
             ORDER BY j.nombre ASC 
             LIMIT 10
         `;

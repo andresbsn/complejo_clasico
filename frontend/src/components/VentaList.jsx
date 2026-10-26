@@ -34,10 +34,6 @@ const VentaList = ({ refreshTrigger }) => {
                 hasta = today;
             }
 
-            if (hasta) {
-                hasta = `${hasta} 23:59:59`;
-            }
-
             const data = await VentaService.getAll({ 
                 fechaDesde: desde, 
                 fechaHasta: hasta 
@@ -120,7 +116,7 @@ const VentaList = ({ refreshTrigger }) => {
                                     >
                                         Ver Detalles
                                     </button>
-                                    {!venta.observaciones?.includes('Nota de Crédito') && (
+                                    {isAdmin && !venta.observaciones?.includes('Nota de Crédito') && (
                                         <button 
                                             onClick={async () => {
                                                 const result = await alerts.confirm('¿Anular venta?', '¿Está seguro de generar una nota de crédito para anular esta venta? Esto devolverá el stock e impactará en la caja.');
@@ -171,7 +167,7 @@ const VentaList = ({ refreshTrigger }) => {
                                         >
                                             Ver Detalles
                                         </button>
-                                        {!venta.observaciones?.includes('Nota de Crédito') && (
+                                        {isAdmin && !venta.observaciones?.includes('Nota de Crédito') && (
                                             <button 
                                                 onClick={async () => {
                                                     const result = await alerts.confirm('¿Anular venta?', '¿Está seguro de generar una nota de crédito para anular esta venta? Esto devolverá el stock e impactará en la caja.');
